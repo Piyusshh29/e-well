@@ -1,0 +1,93 @@
+import { useState, useEffect } from "react";
+import { Grid, CircularProgress, Box } from "@mui/material";
+import axios from "axios";
+
+import StatCard from "../components/StatCard";
+import HealthChart from "../components/HealthChart";
+import AppointmentCard from "../components/AppointmentCard";
+import AIHealthCard from "../components/AIHealthCard";
+import ActivityTimeline from "../components/ActivityTimeline";
+import QuickActions from "../components/QuickActions";
+
+export default function Dashboard() {
+  const [stats, setStats] = useState({
+    heartRate: "76",
+    sleep: "0",
+    water: "0",
+    mood: "Not Logged"
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("http://localhost:5000/api/dashboard/stats", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data.success) {
+          setStats(res.data.stats);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard stats", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Grid container spacing={3}>
+      {/* Stats */}
+      <Grid item xs={12} sm={6} md={3}>
+        <StatCard title="Heart Rate" value={`${stats.heartRate} BPM`} />
+      </Grid>
+
+      <Grid item xs={12} sm={6} md={3}>
+        <StatCard title="Sleep" value={`${stats.sleep} hrs`} />
+      </Grid>
+
+      <Grid item xs={12} sm={6} md={3}>
+        <StatCard title="Water Intake" value={`${stats.water} L`} />
+      </Grid>
+
+      <Grid item xs={12} sm={6} md={3}>
+        <StatCard title="Mood" value={stats.mood} />
+      </Grid>
+
+      {/* Chart */}
+      <Grid item xs={12} md={8}>
+        <HealthChart />
+      </Grid>
+
+      {/* Appointment */}
+      <Grid item xs={12} md={4}>
+        <AppointmentCard />
+      </Grid>
+
+      {/* AI Card */}
+      <Grid item xs={12} md={6}>
+        <AIHealthCard />
+      </Grid>
+
+      {/* Timeline */}
+      <Grid item xs={12} md={6}>
+        <ActivityTimeline />
+      </Grid>
+
+      {/* Quick Actions */}
+      <Grid item xs={12}>
+        <QuickActions />
+      </Grid>
+    </Grid>
+  );
+}
