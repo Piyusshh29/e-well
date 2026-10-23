@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 
 import {
@@ -21,7 +22,22 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Avatar,
+  IconButton,
+  Menu,
+  MenuItem,
 } from "@mui/material";
+
+const avatarOptions = [
+  { id: 1, text: "U", bg: "#2563EB" },
+  { id: 2, text: "🦊", bg: "#F97316" },
+  { id: 3, text: "🐼", bg: "#14B8A6" },
+  { id: 4, text: "🐯", bg: "#F59E0B" },
+  { id: 5, text: "🦁", bg: "#EAB308" },
+  { id: 6, text: "🐸", bg: "#22C55E" },
+  { id: 7, text: "🦄", bg: "#D946EF" },
+  { id: 8, text: "🐙", bg: "#EF4444" },
+];
 
 const menuItems = [
   {
@@ -97,6 +113,22 @@ const menuItems = [
 ];
 
 function Sidebar() {
+  const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
+  const [currentAvatar, setCurrentAvatar] = useState(avatarOptions[0]);
+
+  const handleAvatarClick = (event) => {
+    setAvatarAnchorEl(event.currentTarget);
+  };
+
+  const handleAvatarClose = () => {
+    setAvatarAnchorEl(null);
+  };
+
+  const handleAvatarSelect = (avatar) => {
+    setCurrentAvatar(avatar);
+    handleAvatarClose();
+  };
+
   return (
     <Box
       sx={{
@@ -195,7 +227,7 @@ function Sidebar() {
         ))}
       </List>
 
-      {/* Logout */}
+      {/* User Profile & Logout */}
 
       <Box
         sx={{
@@ -210,22 +242,85 @@ function Sidebar() {
           }}
         />
 
-        <ListItemButton
-          sx={{
+        <Box 
+          sx={{ 
+            display: "flex", 
+            alignItems: "center", 
+            bgcolor: "rgba(255,255,255,0.05)",
             borderRadius: 3,
-            color: "#fff",
-
-            "&:hover": {
-              bgcolor: "#DC2626",
-            },
+            p: 1.5,
           }}
         >
-          <ListItemIcon sx={{ color: "#fff" }}>
-            <Logout />
-          </ListItemIcon>
+          <Avatar 
+            onClick={handleAvatarClick}
+            sx={{ 
+              width: 40, 
+              height: 40, 
+              bgcolor: currentAvatar.bg,
+              mr: 1.5,
+              cursor: "pointer",
+              transition: "transform 0.2s",
+              "&:hover": { transform: "scale(1.1)" }
+            }}
+          >
+            {currentAvatar.text}
+          </Avatar>
+          
+          <Menu
+            anchorEl={avatarAnchorEl}
+            open={Boolean(avatarAnchorEl)}
+            onClose={handleAvatarClose}
+            anchorOrigin={{
+              vertical: 'top',
+              horizontal: 'left',
+            }}
+            transformOrigin={{
+              vertical: 'bottom',
+              horizontal: 'left',
+            }}
+            sx={{ 
+              mt: -1,
+              "& .MuiPaper-root": {
+                bgcolor: "#1E293B",
+                color: "#fff",
+              }
+            }}
+          >
+            {avatarOptions.map((avatar) => (
+              <MenuItem 
+                key={avatar.id} 
+                onClick={() => handleAvatarSelect(avatar)}
+                sx={{ display: 'flex', gap: 2, alignItems: 'center' }}
+              >
+                <Avatar sx={{ width: 32, height: 32, bgcolor: avatar.bg }}>
+                  {avatar.text}
+                </Avatar>
+                <Typography variant="body2">Avatar {avatar.id}</Typography>
+              </MenuItem>
+            ))}
+          </Menu>
+          
+          <Box sx={{ flexGrow: 1, overflow: "hidden" }}>
+            <Typography variant="subtitle2" noWrap sx={{ fontWeight: 600, color: "#fff" }}>
+              User Name
+            </Typography>
+            <Typography variant="caption" noWrap sx={{ color: "#94A3B8" }}>
+              user@example.com
+            </Typography>
+          </Box>
 
-          <ListItemText primary="Logout" />
-        </ListItemButton>
+          <IconButton
+            sx={{
+              color: "#94A3B8",
+              "&:hover": {
+                color: "#fff",
+                bgcolor: "#DC2626",
+              },
+            }}
+          >
+            <Logout fontSize="small" />
+          </IconButton>
+        </Box>
       </Box>
     </Box>
   );

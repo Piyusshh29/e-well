@@ -1,12 +1,18 @@
+
 const { GoogleGenAI } = require("@google/genai");
 const { saveMessage, getMessagesByUser } = require("../models/aiModel");
+const { getHealthContext } = require("../services/healthContextService");
 
 const getGeminiClient = () => {
   if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured in the server environment");
+    throw new Error(
+      "GEMINI_API_KEY is not configured in the server environment"
+    );
   }
 
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  return new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY,
+  });
 };
 
 const generateAIResponse = async (userMessage) => {
@@ -28,6 +34,7 @@ const generateAIResponse = async (userMessage) => {
   });
 
   const answer = response.output_text;
+
   if (!answer || !answer.trim()) {
     throw new Error("Gemini returned an empty response");
   }
@@ -35,9 +42,10 @@ const generateAIResponse = async (userMessage) => {
   return answer.trim();
 };
 
+// Existing AI chat functionality.
 const sendMessage = async (req, res) => {
   const { content } = req.body;
-  const user_id = req.user.id;
+  const userId = req.user.id;
 
   if (typeof content !== "string" || !content.trim()) {
     return res.status(400).json({
@@ -49,21 +57,27 @@ const sendMessage = async (req, res) => {
   try {
     const cleanContent = content.trim();
 
-    // Keep the user's message in the existing PostgreSQL chat history.
-    const userMsg = await saveMessage(user_id, "user", cleanContent);
+    const userMsg = await saveMessage(userId, "user", cleanContent);
 
     let aiResponseContent;
+
     try {
       aiResponseContent = await generateAIResponse(cleanContent);
     } catch (error) {
       console.error("Gemini response generation failed:", error.message);
+
       return res.status(502).json({
         success: false,
-        message: "The AI assistant is temporarily unavailable. Please try again.",
+        message:
+          "The AI assistant is temporarily unavailable. Please try again.",
       });
     }
 
-    const aiMsg = await saveMessage(user_id, "ai", aiResponseContent);
+    const aiMsg = await saveMessage(
+      userId,
+      "ai",
+      aiResponseContent
+    );
 
     return res.status(201).json({
       success: true,
@@ -71,6 +85,7 @@ const sendMessage = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in sendMessage controller:", error.message);
+
     return res.status(500).json({
       success: false,
       message: "Unable to process your message right now.",
@@ -78,14 +93,18 @@ const sendMessage = async (req, res) => {
   }
 };
 
+// Existing AI chat history.
 const getHistory = async (req, res) => {
-  const user_id = req.user.id;
-
   try {
-    const history = await getMessagesByUser(user_id);
-    return res.status(200).json({ success: true, messages: history });
+    const history = await getMessagesByUser(req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      messages: history,
+    });
   } catch (error) {
     console.error("Error in getHistory controller:", error.message);
+
     return res.status(500).json({
       success: false,
       message: "Unable to load chat history.",
@@ -93,7 +112,55 @@ const getHistory = async (req, res) => {
   }
 };
 
+// Personalized wellness advice based on the user's actual records.
+const getWellnessAdvice = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const healthContext = await getHealthContext(userId);
+    const ai = getGeminiClient();
+
+    const response = await ai.interactions.create({
+      model: "gemini-3.8-flash",
+      input: [
+        "You are E-WELL, a supportive student wellness coach.",
+        "Personalize your advice using the student's actual records below.",
+        "Identify simple patterns in mood, sleep, hydration and stress.",
+        "Suggest 3 to 5 practical actions tailored to the available data.",
+        "If a category has no records, say there is not enough data for it.",
+        "Do not invent measurements or claim that missing records exist.",
+        "Do not diagnose conditions or prescribe treatment.",
+        "Keep the language friendly, clear and easy to follow.",
+        "If the records indicate high stress, respond supportively without judgment.",
+        "",
+        "Student's recent wellness records (JSON):",
+        JSON.stringify(healthContext, null, 2),
+      ].join("\n"),
+      store: false,
+    });
+
+    const advice = response.output_text;
+
+    if (!advice || !advice.trim()) {
+      throw new Error("Gemini returned an empty wellness response");
+    }
+
+    return res.status(200).json({
+      success: true,
+      advice: advice.trim(),
+      data: healthContext,
+    });
+  } catch (error) {
+    console.error("Wellness coach error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to generate personalized wellness advice.",
+    });
+  }
+};
+
 module.exports = {
   sendMessage,
   getHistory,
+  getWellnessAdvice,
 };
